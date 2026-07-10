@@ -1,0 +1,41 @@
+{
+  "passed": 8,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "aggregation_ventas",
+      "passed": true,
+      "value": 2550.0
+    },
+    {
+      "name": "aggregation_costo",
+      "passed": true,
+      "value": 1660.0
+    },
+    {
+      "name": "aggregation_cantidad",
+      "passed": true,
+      "value": 5.0
+    },
+    {
+      "name": "drill_down_hierarchies",
+      "passed": true
+    },
+    {
+      "name": "roll_up_levels",
+      "passed": true
+    },
+    {
+      "name": "slicing_dimensions",
+      "passed": true
+    },
+    {
+      "name": "dicing_crossjoin",
+      "passed": true
+    },
+    {
+      "name": "mdx_correctness_tokens",
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,256 @@
+{
+  "generated_at": "2026-05-13T12:39:46.157800Z",
+  "platform": "SQL Server Analysis Services Multidimensional",
+  "cube": {
+    "name": "auto_olap_cube",
+    "dimensions": [
+      {
+        "name": "dim_date",
+        "source_columns": [
+          "date_day",
+          "date_month",
+          "date_quarter",
+          "date_year"
+        ],
+        "surrogate_key": "sk_date",
+        "natural_key": "date_day",
+        "attributes": [
+          "date_month",
+          "date_quarter",
+          "date_year"
+        ],
+        "hierarchies": [
+          {
+            "name": "dim_date_hierarchy",
+            "dimension": "dim_date",
+            "levels": [
+              "date_day",
+              "date_month",
+              "date_quarter",
+              "date_year"
+            ],
+            "confidence": 1.0,
+            "evidence": [
+              "inclusion/cardinalidad validada"
+            ]
+          }
+        ],
+        "dimension_type": "date"
+      },
+      {
+        "name": "dim_geography",
+        "source_columns": [
+          "tienda",
+          "ciudad",
+          "region",
+          "pais"
+        ],
+        "surrogate_key": "sk_geography",
+        "natural_key": "tienda",
+        "attributes": [
+          "ciudad",
+          "region",
+          "pais"
+        ],
+        "hierarchies": [
+          {
+            "name": "dim_geography_hierarchy",
+            "dimension": "dim_geography",
+            "levels": [
+              "tienda",
+              "ciudad",
+              "region",
+              "pais"
+            ],
+            "confidence": 1.0,
+            "evidence": [
+              "inclusion/cardinalidad validada"
+            ]
+          }
+        ],
+        "dimension_type": "geography"
+      },
+      {
+        "name": "dim_product",
+        "source_columns": [
+          "sku",
+          "producto",
+          "categoria"
+        ],
+        "surrogate_key": "sk_product",
+        "natural_key": "sku",
+        "attributes": [
+          "producto",
+          "categoria"
+        ],
+        "hierarchies": [
+          {
+            "name": "dim_product_hierarchy",
+            "dimension": "dim_product",
+            "levels": [
+              "sku",
+              "producto",
+              "categoria"
+            ],
+            "confidence": 1.0,
+            "evidence": [
+              "inclusion/cardinalidad validada"
+            ]
+          }
+        ],
+        "dimension_type": "product"
+      },
+      {
+        "name": "dim_customer",
+        "source_columns": [
+          "cliente_id",
+          "segmento"
+        ],
+        "surrogate_key": "sk_customer",
+        "natural_key": "cliente_id",
+        "attributes": [
+          "segmento"
+        ],
+        "hierarchies": [
+          {
+            "name": "dim_customer_hierarchy",
+            "dimension": "dim_customer",
+            "levels": [
+              "cliente_id",
+              "segmento"
+            ],
+            "confidence": 1.0,
+            "evidence": [
+              "inclusion/cardinalidad validada"
+            ]
+          }
+        ],
+        "dimension_type": "customer"
+      }
+    ],
+    "fact": {
+      "name": "fact_central",
+      "grain": "Una fila por combinacion de date_day, tienda, sku, cliente_id",
+      "grain_type": "transactional",
+      "foreign_keys": {
+        "dim_date": "sk_date",
+        "dim_geography": "sk_geography",
+        "dim_product": "sk_product",
+        "dim_customer": "sk_customer"
+      },
+      "measures": [
+        {
+          "name": "ventas",
+          "aggregation": "SUM",
+          "additivity": "additive",
+          "expression": "SUM([ventas])",
+          "reason": "metrica financiera/cantidad agregable"
+        },
+        {
+          "name": "costo",
+          "aggregation": "SUM",
+          "additivity": "additive",
+          "expression": "SUM([costo])",
+          "reason": "metrica financiera/cantidad agregable"
+        },
+        {
+          "name": "cantidad",
+          "aggregation": "SUM",
+          "additivity": "additive",
+          "expression": "SUM([cantidad])",
+          "reason": "metrica financiera/cantidad agregable"
+        },
+        {
+          "name": "inventario",
+          "aggregation": "LASTNONEMPTY",
+          "additivity": "semi_additive",
+          "expression": "LASTNONEMPTY([inventario])",
+          "reason": "snapshot o saldo"
+        },
+        {
+          "name": "margin_pct",
+          "aggregation": "AVG",
+          "additivity": "non_additive",
+          "expression": "AVG([margin_pct])",
+          "reason": "ratio/porcentaje no es sumable"
+        }
+      ],
+      "degenerate_dimensions": [
+        "invoice_id"
+      ],
+      "partitions": [
+        {
+          "name": "p_by_year",
+          "column": "date_year",
+          "strategy": "YEAR",
+          "pruning": true
+        }
+      ]
+    },
+    "aggregations": [
+      {
+        "name": "agg_date_date_year",
+        "dimension": "dim_date",
+        "level": "date_year",
+        "measures": [
+          "ventas",
+          "costo",
+          "cantidad",
+          "inventario"
+        ]
+      },
+      {
+        "name": "agg_geography_pais",
+        "dimension": "dim_geography",
+        "level": "pais",
+        "measures": [
+          "ventas",
+          "costo",
+          "cantidad",
+          "inventario"
+        ]
+      },
+      {
+        "name": "agg_product_categoria",
+        "dimension": "dim_product",
+        "level": "categoria",
+        "measures": [
+          "ventas",
+          "costo",
+          "cantidad",
+          "inventario"
+        ]
+      },
+      {
+        "name": "agg_customer_segmento",
+        "dimension": "dim_customer",
+        "level": "segmento",
+        "measures": [
+          "ventas",
+          "costo",
+          "cantidad",
+          "inventario"
+        ]
+      }
+    ],
+    "validation_issues": []
+  },
+  "deployment": {
+    "data_source": "DW_SQLSERVER",
+    "data_source_view": "DW_DSV",
+    "measure_group": "fact_central",
+    "partitions": [
+      {
+        "name": "p_by_year",
+        "column": "date_year",
+        "strategy": "YEAR",
+        "pruning": true
+      }
+    ]
+  },
+  "benchmark": {
+    "seconds": 0.5215,
+    "rows": 4,
+    "columns": 21
+  }
+}

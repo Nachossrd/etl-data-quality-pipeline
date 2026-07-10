@@ -1,0 +1,26 @@
+dataset: title_ratings
+
+required_columns:
+  - tconst
+  - averageRating
+  - numVotes
+
+rules:
+  - name: tconst_not_null
+    column: tconst
+    type: not_null
+    on_violation: fail
+
+  - name: averageRating_scale
+    column: averageRating
+    type: range
+    min: 1.0
+    max: 10.0
+    on_violation: quarantine
+
+  - name: numVotes_nonnegative
+    column: numVotes
+    type: range
+    min: 0
+    max: 100000000
+    on_violation: quarantine

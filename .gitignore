@@ -1,0 +1,70 @@
+# ─── Secrets — nunca commitear ────────────────────────────────────────────
+.env
+.env.local
+*.env.local
+*.pem
+*.key
+
+# ─── Python ───────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# ─── Virtual env ──────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ─── IDE / editor ─────────────────────────────────────────────────────────
+.vs/
+.vscode/
+.idea/
+*.code-workspace
+
+# ─── Instaladores / binarios pesados (no van al repo) ─────────────────────
+*.vsix
+*.exe
+*.msi
+
+# ─── Datos: entradas, subidas y datasets (nunca publicar datos) ───────────
+uploads/
+ultimo trabajo/
+*.parquet
+*.tsv
+*.db
+*.sqlite
+# Excel/CSV de datos — se excluyen por defecto. El demo mínimo se fuerza abajo.
+*.xlsx
+*.xls
+*.csv
+
+# ─── Salidas del pipeline (pueden ser GBs, versionadas por run_id) ────────
+output/
+output_*/
+quarantine/
+audit_reports/
+olap_artifacts/
+sql_scripts/
+semantic/*.png
+*.log
+logs/
+
+# ─── Reportes/artefactos generados ────────────────────────────────────────
+quality_report.json
+phase_b_change_log.json
+reporte_pipeline.md
+auditoria_profunda.md
+
+# ─── Temporales ───────────────────────────────────────────────────────────
+*.tmp
+~$*
+
+# ─── Excepciones: demo mínimo y fixtures de test SÍ se versionan ──────────
+!infierno.csv
+!tests/fixtures/*.csv

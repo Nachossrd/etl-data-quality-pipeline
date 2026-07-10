@@ -1,0 +1,10 @@
+;year;make;model;trim;body;transmission;vin;state;condition;odometer;color;interior;seller;mmr;sellingprice;saledate
+0;2014;BMW;3 Series;320i;Sedan;manual;wba3b1c51epv79886;ca;39.0;19989.0;silver;black;south coast toyota;21700.0;22000.0;Thu May 21 2015 05:30:00 GMT-0700 (PDT)
+1;2014;Toyota;Camry;LE;sedan;automatic;4t1bf1fk5eu420418;nv;35.0;26295.0;white;gray;toyota motor sales usa inc/program;14550.0;14500.0;Fri May 29 2015 05:00:00 GMT-0700 (PDT)
+2;2002;Cadillac;DeVille;Base;Sedan;automatic;1g6kd54y52u240928;tx;28.0;69261.0;silver;gray;credit acceptance corp/vrs/southfield;2550.0;1900.0;Wed Feb 11 2015 02:00:00 GMT-0800 (PST)
+3;2007;Honda;Odyssey;EX-L;minivan;automatic;5fnrl38667b402044;ga;27.0;124409.0;gray;gray;tdaf remarketing;7150.0;7000.0;Thu Jun 04 2015 03:00:00 GMT-0700 (PDT)
+4;2014;BMW;3 Series;320i;Sedan;;wba3b1c51epv79887;ca;30.0;15000.0;black;black;dealer x;20000.0;20500.0;Fri Jun 05 2015
+5;2010;Ford;Focus;SE;Sedan;manual;abc123;tx;25.0;90000.0;blue;black;dealer y;5000.0;4800.0;Mon Jun 08 2015
+6;2018;Tesla;Model 3;Standard;Sedan;automatic;tesla1;ca;45.0;5000.0;red;black;tesla direct;35000.0;36000.0;Tue Jun 09 2015
+7;2014;Toyota;Camry;LE;sedan;automatic;dup1;nv;;26295.0;white;gray;test;14550.0;14500.0;test
+8;2014;Honda;Civic;EX;Sedan;manual;civic1;ca;33.0;;black;black;honda dealer;15000.0;14800.0;test

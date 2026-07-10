@@ -1,0 +1,31 @@
+dataset: name_basics
+
+required_columns:
+  - nconst
+  - primaryName
+
+rules:
+  - name: nconst_not_null
+    column: nconst
+    type: not_null
+    on_violation: fail
+
+  - name: nconst_format
+    column: nconst
+    type: regex
+    pattern: "^nm\\d+$"
+    on_violation: quarantine
+
+  - name: birthYear_range
+    column: birthYear
+    type: range
+    min: 1800
+    max: 2030
+    on_violation: warn
+
+  - name: deathYear_range
+    column: deathYear
+    type: range
+    min: 1800
+    max: 2030
+    on_violation: warn

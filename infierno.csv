@@ -1,0 +1,11 @@
+id_venta,fecha_venta,item_hardware,sale_amount,costo_envio,estado,notas_jose
+TRX-001,12-05-2026,Asus TUF Gaming F15,$850.000,5000,VENDIDO,todo ok
+002,05/13/2026,  RAM 16gb kingston  , 45000,0,vendido,
+id_003,Ayer, rtx 3060 ti,350k, 6000 ,VENDIDO ,el cliente lloro por el precio
+TRX-004,45425,placa madre asus,,0,DEVUELTO,vino quemada
+-800,15/05/26,empanadas de queso,2500,0,comprado,tenia hambre
+TRX-006,2026-05-16,  lenovo legion 5  , 1.200.000,50 ,10000,Vendido,
+,Mañana,mouse logitech g203,15000,0,???,se lo preste a la mica pa estudiar
+TRX008,14-May-2026,monitor 144hz , USD 200 ,15000,PENDIENTE,pagado en dolares ctm
+id:999,10/10/26,cable hdmi,-5000,0,cambio,vuelto del pan
+TRX-010,2026-05-18,SSD 1TB M.2,sesenta lucas, 4000 ,Vendido,

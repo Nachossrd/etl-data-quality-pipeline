@@ -1,0 +1,35 @@
+<create>
+  
+    
+      AutoOlapDW
+      Auto OLAP DW
+      
+        DW_SQLSERVERDW_SQLSERVER
+      
+      
+        DW_DSVDW_DSV
+      
+      <dimensionid>DimDate
+<dimensionid>DimGeography
+<dimensionid>DimProduct
+<dimensionid>DimCustomer
+      
+        
+          AutoOlapCube
+          auto_olap_cube
+          
+            
+              FactCentral
+              fact_central
+              <measure>ventasSUMventas
+<measure>costoSUMcosto
+<measure>cantidadSUMcantidad
+<measure>inventarioLASTNONEMPTYinventario
+<measure>margin_pctAVGmargin_pct
+              p_defaultp_default
+            
+          
+        
+      
+    
+  

@@ -1,0 +1,38 @@
+erDiagram
+    fact_central {
+        BIGINT fact_id
+        DECIMAL ventas
+        DECIMAL costo
+        DECIMAL cantidad
+        DECIMAL inventario
+        DECIMAL margin_pct
+    }
+    dim_date {
+        INT sk_date
+        STRING date_day
+        STRING date_month
+        STRING date_quarter
+        STRING date_year
+    }
+    dim_date ||--o{ fact_central : filters
+    dim_geography {
+        INT sk_geography
+        STRING tienda
+        STRING ciudad
+        STRING region
+        STRING pais
+    }
+    dim_geography ||--o{ fact_central : filters
+    dim_product {
+        INT sk_product
+        STRING sku
+        STRING producto
+        STRING categoria
+    }
+    dim_product ||--o{ fact_central : filters
+    dim_customer {
+        INT sk_customer
+        STRING cliente_id
+        STRING segmento
+    }
+    dim_customer ||--o{ fact_central : filters

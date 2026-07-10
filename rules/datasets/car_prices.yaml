@@ -1,0 +1,66 @@
+# Reglas de calidad para el dataset car_prices (tras limpieza del PDF).
+# El cleaner aplicó: drop columnas + dropna + binarizar transmission.
+# Estas reglas validan que el output cumple expectativas de negocio.
+
+dataset: car_prices
+
+required_columns:
+  - year
+  - transmission
+  - condition
+  - odometer
+  - mmr
+  - sellingprice
+
+rules:
+  # ── Año plausible de fabricación ───────────────────────────────────────
+  - name: year_range
+    column: year
+    type: range
+    min: 1900
+    max: 2030
+    on_violation: quarantine
+
+  # ── Transmission ya viene binarizada (0/1) ─────────────────────────────
+  - name: transmission_binary
+    column: transmission
+    type: allowed_values
+    values: [0, 1]
+    on_violation: fail   # si esto falla, la limpieza está rota
+
+  # ── Condición en escala razonable (IMDb usa 0-50 aprox) ────────────────
+  - name: condition_nonnegative
+    column: condition
+    type: range
+    min: 0
+    max: 60
+    on_violation: quarantine
+
+  # ── Odómetro no puede ser negativo. >2M km es sospechoso. ──────────────
+  - name: odometer_plausible
+    column: odometer
+    type: range
+    min: 0
+    max: 2000000
+    on_violation: quarantine
+
+  # ── Valor de mercado (MMR) y precio de venta no pueden ser negativos ──
+  - name: mmr_nonnegative
+    column: mmr
+    type: range
+    min: 0
+    max: 500000
+    on_violation: quarantine
+
+  - name: sellingprice_nonnegative
+    column: sellingprice
+    type: range
+    min: 0
+    max: 1000000
+    on_violation: quarantine
+
+  # ── Sin nulls en la variable objetivo (target del modelo) ──────────────
+  - name: sellingprice_not_null
+    column: sellingprice
+    type: not_null
+    on_violation: fail

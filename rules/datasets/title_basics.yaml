@@ -1,0 +1,57 @@
+# Reglas de calidad para title.basics.tsv (IMDb).
+# Aplicar tras el ImdbDataset.clean() que ya filtra tconst nulo.
+
+dataset: title_basics
+
+required_columns:
+  - tconst
+  - titleType
+  - primaryTitle
+  - startYear
+
+rules:
+  # ── tconst es PK: nunca nulo, único ────────────────────────────────────
+  - name: tconst_not_null
+    column: tconst
+    type: not_null
+    on_violation: fail
+
+  - name: tconst_format
+    column: tconst
+    type: regex
+    pattern: "^tt\\d+$"
+    on_violation: quarantine
+
+  # ── titleType limitado al universo conocido de IMDb ────────────────────
+  - name: titleType_allowed
+    column: titleType
+    type: allowed_values
+    values:
+      - movie
+      - short
+      - tvSeries
+      - tvEpisode
+      - tvMovie
+      - tvMiniSeries
+      - tvSpecial
+      - tvShort
+      - video
+      - videoGame
+      - tvPilot
+    on_violation: warn   # IMDb a veces agrega nuevos tipos; no romper
+
+  # ── startYear plausible (cine empieza ~1888) ───────────────────────────
+  - name: startYear_range
+    column: startYear
+    type: range
+    min: 1880
+    max: 2030
+    on_violation: quarantine
+
+  # ── runtimeMinutes positivo, máximo razonable 24h = 1440min ───────────
+  - name: runtime_range
+    column: runtimeMinutes
+    type: range
+    min: 1
+    max: 1500
+    on_violation: warn   # hay docs experimentales largos legítimos (Gondwana=1440)

@@ -1,0 +1,27 @@
+-- MDX basico: ventas por anio
+SELECT NON EMPTY {[Measures].[ventas]} ON COLUMNS,
+NON EMPTY [dim_date].[date_year].Members ON ROWS
+FROM [auto_olap_cube];
+
+-- MDX intermedio: ventas por categoria y region con CROSSJOIN
+SELECT NON EMPTY {[Measures].[ventas]} ON COLUMNS,
+NON EMPTY CROSSJOIN([dim_product].[sku].Members, [dim_geography].[pais].Members) ON ROWS
+FROM [auto_olap_cube];
+
+-- MDX avanzado: TOPCOUNT productos
+SELECT {[Measures].[ventas]} ON COLUMNS,
+TOPCOUNT([dim_product].[sku].Members, 10, [Measures].[ventas]) ON ROWS
+FROM [auto_olap_cube];
+
+-- Drill-down navegable
+SELECT {[Measures].[ventas]} ON COLUMNS,
+DRILLDOWNLEVEL([dim_date].[date_year].Members) ON ROWS
+FROM [auto_olap_cube];
+
+-- YTD y comparacion interanual con PARALLELPERIOD
+WITH
+MEMBER [Measures].[ventas YTD] AS 'SUM(YTD([dim_date].CurrentMember), [Measures].[ventas])'
+MEMBER [Measures].[ventas PY] AS '([Measures].[ventas], PARALLELPERIOD([dim_date].[date_year], 1, [dim_date].CurrentMember))'
+SELECT {[Measures].[ventas], [Measures].[ventas YTD], [Measures].[ventas PY]} ON COLUMNS,
+NON EMPTY FILTER([dim_date].[date_year].Members, [Measures].[ventas] > 0) ON ROWS
+FROM [auto_olap_cube];
