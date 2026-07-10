@@ -1,6 +1,8 @@
 # 🧹 ETL Data Quality Pipeline
 
-> Pipeline de limpieza y calidad de datos **zero-click** para datos transaccionales sucios: detecta el esquema, normaliza semánticamente, valida reglas de negocio, pone en cuarentena lo dudoso y genera reportes de calidad, modelo dimensional y carga analítica — sin configuración manual.
+> Pipeline experimental de limpieza y calidad de datos para datos transaccionales sucios: detecta el esquema, normaliza semánticamente, valida reglas de negocio, pone en cuarentena lo dudoso y genera reportes de calidad, modelo dimensional y carga analítica — buscando minimizar la configuración manual.
+
+**Por qué este proyecto:** desarrollado tras observar que, en BI, la mayor parte del tiempo se va en *limpiar* datos, no en analizarlos. La idea fue investigar cuánto de ese trabajo repetitivo puede automatizarse de forma auditable, sin ocultar las decisiones detrás de una caja negra.
 
 <p align="center">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
@@ -89,6 +91,28 @@ python -m pytest tests/ -v
 ## 🔒 Configuración y secretos
 
 Toda la configuración sensible vive en `.env` (nunca versionado). Ver [`.env.example`](.env.example) para la lista completa de variables: credenciales SQL, webhook de alertas, token de la Web UI, tamaños de chunk y umbrales.
+
+## 📊 Benchmarks
+
+> ⚠️ **Pendiente de medición.** Prefiero dejar la tabla vacía a rellenarla con cifras no verificadas. Las siguientes son las métricas que reporta el pipeline (`quality_report.json` + `manifest.json` por run) y que voy a medir sobre un dataset representativo.
+
+| Métrica | Cómo se mide | Valor |
+|---------|--------------|-------|
+| Throughput (filas/seg) | filas totales / tiempo de run (`manifest.json`) | _por medir_ |
+| Tiempo por 100k filas | run completo sobre dataset de referencia | _por medir_ |
+| RAM pico | `psutil` durante el run (chunk = 50k) | _por medir_ |
+| % filas en cuarentena | `quality_summary.quarantine_ratio` | _por medir_ |
+| Precisión detección de esquema | columnas bien tipadas / total, sobre un set etiquetado | _por medir_ |
+
+_Entorno de referencia: por definir (CPU / RAM / dataset)._
+
+## ⚠️ Limitaciones
+
+- **No reemplaza** un data warehouse ni el criterio de un *data steward*: automatiza el trabajo repetitivo, no la decisión de negocio.
+- Las reglas semánticas están calibradas para datos **transaccionales en español (es-CL)**; otros dominios requieren añadir/ajustar reglas.
+- En datasets con dominios nuevos conviene **revisar la cuarentena a mano** antes de confiar en el resultado.
+- No incluye anonimización: **no procesar PII** sin una capa previa de tratamiento.
+- La carga a SQL Server / OLAP asume un entorno con Docker o un servidor accesible.
 
 ## 🛠️ Stack
 
