@@ -43,6 +43,7 @@ from core.docker_manager import EphemeralSQLServer
 from core.sql_restore import BackupRestorer
 from core.extraction import ExtractionEngine
 from core.file_extraction import FileExtractor
+from core.ingest import UnsupportedFormatError, discover_tables
 from core.cleaning_engine import CleaningEngine
 from core.quarantine_engine import QuarantineEngine
 from core.export_engine import ExportEngine
@@ -79,11 +80,15 @@ def process_table_chunks(chunk_iterator, table_name: str,
     full_df_list = []
     global_classifications = {}
 
-    # Cargar reglas declarativas si existen para este dataset
+    # Cargar reglas declarativas si existen para este dataset. El nombre del
+    # archivo manda; si no hay YAML con ese nombre se usa el que declare el
+    # cleaner (se resuelve más abajo, con el primer chunk en mano).
     validator = RuleValidator.for_dataset(table_name)
     if validator:
         logger.info(f"Reglas declarativas cargadas para '{table_name}': "
                     f"{len(validator.rules)} reglas desde {validator.source}")
+    rules_resolved = validator is not None
+    semantic_options = {}
 
     # Schema registry: detectar drift contra corridas anteriores
     schema_reg = SchemaRegistry()
@@ -92,8 +97,30 @@ def process_table_chunks(chunk_iterator, table_name: str,
     for chunk in chunk_iterator:
         extracted_count += len(chunk)
 
-        # Clean — el cleaner se elige por auto-detección, con hint del table_name
-        clean_chunk = CleaningEngine.clean_chunk(chunk, hint=table_name)
+        # Clean — el cleaner se elige por auto-detección, con hint del table_name.
+        # Se resuelve la clase primero porque el cleaner declara cómo debe
+        # tratarlo el resto del pipeline (fases semánticas, reglas aplicables).
+        cleaner_cls = CleaningEngine.select_cleaner(chunk, hint=table_name)
+        if cleaner_cls is not None and not semantic_options:
+            semantic_options = dict(getattr(cleaner_cls, "semantic_options", {}) or {})
+            if semantic_options:
+                logger.info(f"Cleaner '{cleaner_cls.name}' ajusta el enriquecimiento "
+                            f"semántico: {semantic_options}")
+        if cleaner_cls is not None and not rules_resolved:
+            rules_resolved = True
+            declared = getattr(cleaner_cls, "rules_dataset", None)
+            if declared:
+                validator = RuleValidator.for_dataset(declared)
+                if validator:
+                    logger.info(f"Reglas declarativas cargadas vía cleaner "
+                                f"'{cleaner_cls.name}': {len(validator.rules)} "
+                                f"reglas desde {validator.source}")
+
+        clean_chunk = CleaningEngine.clean_chunk(
+            chunk,
+            cleaner_name=cleaner_cls.name if cleaner_cls else None,
+            hint=table_name,
+        )
 
         # Schema drift detection (solo sobre el primer chunk no vacío)
         if not schema_checked and not clean_chunk.empty:
@@ -119,7 +146,7 @@ def process_table_chunks(chunk_iterator, table_name: str,
         clean_chunk = QuarantineEngine.process(clean_chunk, table_name)
 
         # Semantic Enrichment
-        clean_chunk, metrics = SemanticEnricher().enrich(clean_chunk)
+        clean_chunk, metrics = SemanticEnricher(**semantic_options).enrich(clean_chunk)
         if metrics and 'classifications' in metrics:
             global_classifications.update(metrics['classifications'])
 
@@ -205,7 +232,9 @@ def run_pipeline(input_path: str, output_dir: str,
     logger.info("="*60)
     
     _, ext = os.path.splitext(input_path.lower())
-    
+    if os.path.isdir(input_path):
+        ext = ""
+
     if ext == ".bak":
         logger.info(f"Detected SQL Server Backup file. Spinning up ephemeral Docker container...")
         sql_server = EphemeralSQLServer(input_path)
@@ -232,21 +261,33 @@ def run_pipeline(input_path: str, output_dir: str,
         finally:
             sql_server.destroy_container()
                 
-    elif ext in [".csv"]:
-        logger.info(f"Detected CSV file. Processing...")
-        base_name = os.path.basename(input_path).replace(ext, "")
-        chunk_iterator = FileExtractor.extract_csv_chunked(input_path)
-        process_table_chunks(chunk_iterator, base_name, report_gen, manifest)
-
-    elif ext in [".xlsx", ".xls"]:
-        logger.info(f"Detected Excel file. Processing...")
-        base_name = os.path.basename(input_path).replace(ext, "")
-        chunk_iterator = FileExtractor.extract_excel(input_path)
-        process_table_chunks(chunk_iterator, base_name, report_gen, manifest)
-        
     else:
-        logger.error(f"Unsupported file extension: {ext}. Supported types: .bak, .csv, .xlsx, .xls")
-        sys.exit(1)
+        # Ingesta genérica: un archivo puede contener varias tablas (hojas de
+        # Excel, tablas SQLite, archivos dentro de un ZIP o de una carpeta).
+        # Cada una se procesa por separado, con su propio cleaner, su reporte
+        # de calidad y su tabla de salida.
+        try:
+            sources = discover_tables(input_path)
+        except UnsupportedFormatError as e:
+            logger.error(str(e))
+            sys.exit(1)
+
+        logger.info(f"{len(sources)} tabla(s) detectada(s): "
+                    f"{', '.join(s.name for s in sources)}")
+        for source in sources:
+            logger.info(f"Procesando tabla '{source.name}' "
+                        f"({source.kind} · {os.path.basename(source.origin)})")
+            try:
+                process_table_chunks(source.chunks(), source.name,
+                                     report_gen, manifest)
+            except RuleViolationError:
+                raise
+            except Exception as e:
+                # Una tabla rota no puede tumbar las otras N-1 del mismo run,
+                # pero queda registrada como error del run, no ignorada.
+                msg = f"Tabla '{source.name}' falló: {e}"
+                logger.error(msg)
+                manifest.register_error(msg)
 
     quality_metrics = report_gen.finalize()
     manifest.attach_quality_summary(

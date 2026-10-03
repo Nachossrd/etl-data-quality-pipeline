@@ -10,11 +10,11 @@ La lógica histórica (transactional_es) se movió a
 package: car_prices, imdb_title_basics, imdb_title_ratings.
 """
 
-from typing import Optional
+from typing import Optional, Type
 
 import pandas as pd
 
-from core.cleaners import REGISTRY
+from core.cleaners import REGISTRY, Cleaner
 from core.logging_engine import setup_logger
 
 logger = setup_logger("cleaning_engine")
@@ -22,6 +22,24 @@ logger = setup_logger("cleaning_engine")
 
 class CleaningEngine:
     """Facade compatible con la API legacy."""
+
+    @staticmethod
+    def select_cleaner(df: pd.DataFrame,
+                       cleaner_name: Optional[str] = None,
+                       hint: Optional[str] = None) -> Optional[Type[Cleaner]]:
+        """Resuelve qué cleaner aplica, sin limpiar nada.
+
+        Expuesto aparte de `clean_chunk` porque el orquestador necesita la
+        *clase* — no sólo el DataFrame limpio — para leer lo que el cleaner
+        declara sobre sí mismo (`semantic_options`, `rules_dataset`).
+        """
+        if cleaner_name:
+            cleaner_cls = REGISTRY.get(cleaner_name)
+            if cleaner_cls is not None:
+                return cleaner_cls
+            logger.warning(f"cleaner_name='{cleaner_name}' no registrado, "
+                            "se intentará auto-detección")
+        return REGISTRY.auto_detect(df, hint=hint)
 
     @staticmethod
     def clean_chunk(df: pd.DataFrame,
@@ -38,15 +56,7 @@ class CleaningEngine:
         if df is None or df.empty:
             return df
 
-        cleaner_cls = None
-        if cleaner_name:
-            cleaner_cls = REGISTRY.get(cleaner_name)
-            if cleaner_cls is None:
-                logger.warning(f"cleaner_name='{cleaner_name}' no registrado, "
-                                "se intentará auto-detección")
-
-        if cleaner_cls is None:
-            cleaner_cls = REGISTRY.auto_detect(df, hint=hint)
+        cleaner_cls = CleaningEngine.select_cleaner(df, cleaner_name, hint)
 
         if cleaner_cls is None:
             logger.warning("Ningún cleaner aplicable; chunk devuelto sin cambios")

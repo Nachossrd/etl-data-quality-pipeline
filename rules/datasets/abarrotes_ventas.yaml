@@ -1,0 +1,105 @@
+# Reglas de calidad para el dataset de ventas de Abarrotes CL (2019-2022).
+#
+# Se aplican DESPUÉS de `core/cleaners/abarrotes_ventas.py`, sobre el esquema
+# canónico. Son la red de seguridad: si el cleaner se rompe en una versión
+# futura, estas reglas lo detectan antes de que el dato llegue al dashboard.
+#
+# Criterio de acciones:
+#   fail       -> sólo para invariantes que el cleaner garantiza por
+#                 construcción. Si se violan, el bug es del código, no del dato.
+#   quarantine -> filas inservibles para análisis de venta.
+#   warn       -> anomalías reales del negocio que deben verse en el reporte
+#                 de calidad pero NO deben desaparecer del total vendido.
+
+dataset: abarrotes_ventas
+
+required_columns:
+  - periodo
+  - fecha
+  - anio
+  - cliente_codigo
+  - producto
+  - unidades
+  - venta_clp
+  - costo_clp
+
+rules:
+  # ── Invariantes del cleaner ────────────────────────────────────────────
+  - name: periodo_not_null
+    column: periodo
+    type: not_null
+    on_violation: fail
+
+  - name: empaque_binario
+    column: empaque
+    type: allowed_values
+    values: [RRP, ESTANDAR]
+    on_violation: fail
+
+  - name: categoria_conocida
+    column: categoria
+    type: allowed_values
+    values: [LEGUMBRES, CEREALES Y HARINAS, PREPARADOS Y SOPAS, OTROS]
+    on_violation: warn
+
+  # ── Filas inservibles para análisis de venta ───────────────────────────
+  - name: producto_not_null
+    column: producto
+    type: not_null
+    on_violation: quarantine
+
+  - name: cliente_codigo_not_null
+    column: cliente_codigo
+    type: not_null
+    on_violation: quarantine
+
+  # Devoluciones y notas de crédito: son movimientos válidos de negocio, pero
+  # no son "venta" y no deben alimentar una proyección de demanda.
+  - name: unidades_positivas
+    column: unidades
+    type: range
+    min: 1
+    max: 100000
+    on_violation: quarantine
+
+  - name: venta_positiva
+    column: venta_clp
+    type: range
+    min: 1
+    max: 1000000000
+    on_violation: quarantine
+
+  # ── Anomalías que se reportan pero no se borran ────────────────────────
+  # Costo 0 con venta > 0: el margen de esa fila es ficticio (falta el costo
+  # en el maestro, no es que el producto sea gratis).
+  - name: costo_plausible
+    column: costo_clp
+    type: range
+    min: 1
+    max: 1000000000
+    on_violation: warn
+
+  # Venta bajo costo: existe de verdad (promociones, liquidación), por eso es
+  # warn y no cuarentena. Si el % sube, hay que mirar el maestro de costos.
+  - name: margen_pct_plausible
+    column: margen_pct
+    type: range
+    min: 0
+    max: 100
+    on_violation: warn
+
+  # El caso declara enero 2019 - diciembre 2022. Cualquier fila fuera de
+  # ventana significa que llegó un archivo distinto al del enunciado.
+  - name: anio_en_ventana_del_caso
+    column: anio
+    type: range
+    min: 2019
+    max: 2022
+    on_violation: warn
+
+  - name: precio_unitario_plausible
+    column: precio_unitario_clp
+    type: range
+    min: 100
+    max: 100000
+    on_violation: warn

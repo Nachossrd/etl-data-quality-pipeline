@@ -1,0 +1,140 @@
+{
+  "dataset": "Ventas_2019-al-2022",
+  "schema": [
+    {
+      "column": "data_quality_flags",
+      "dtype": "object"
+    },
+    {
+      "column": "periodo",
+      "dtype": "Int64"
+    },
+    {
+      "column": "fecha",
+      "dtype": "datetime64[us]"
+    },
+    {
+      "column": "anio",
+      "dtype": "Int64"
+    },
+    {
+      "column": "mes",
+      "dtype": "Int64"
+    },
+    {
+      "column": "mes_nombre",
+      "dtype": "string"
+    },
+    {
+      "column": "trimestre",
+      "dtype": "string"
+    },
+    {
+      "column": "semestre",
+      "dtype": "string"
+    },
+    {
+      "column": "grupo_cliente",
+      "dtype": "string"
+    },
+    {
+      "column": "cliente_codigo",
+      "dtype": "string"
+    },
+    {
+      "column": "cliente_nombre",
+      "dtype": "string"
+    },
+    {
+      "column": "local_codigo",
+      "dtype": "string"
+    },
+    {
+      "column": "local_nombre",
+      "dtype": "string"
+    },
+    {
+      "column": "region_codigo",
+      "dtype": "string"
+    },
+    {
+      "column": "region",
+      "dtype": "string"
+    },
+    {
+      "column": "comuna",
+      "dtype": "string"
+    },
+    {
+      "column": "tipo_reposicion",
+      "dtype": "string"
+    },
+    {
+      "column": "producto",
+      "dtype": "string"
+    },
+    {
+      "column": "producto_base",
+      "dtype": "string"
+    },
+    {
+      "column": "categoria",
+      "dtype": "string"
+    },
+    {
+      "column": "familia",
+      "dtype": "string"
+    },
+    {
+      "column": "empaque",
+      "dtype": "str"
+    },
+    {
+      "column": "formato_gramos",
+      "dtype": "float64"
+    },
+    {
+      "column": "formato",
+      "dtype": "string"
+    },
+    {
+      "column": "unidades",
+      "dtype": "int64"
+    },
+    {
+      "column": "venta_clp",
+      "dtype": "float64"
+    },
+    {
+      "column": "costo_clp",
+      "dtype": "float64"
+    },
+    {
+      "column": "margen_clp",
+      "dtype": "float64"
+    },
+    {
+      "column": "margen_pct",
+      "dtype": "float64"
+    },
+    {
+      "column": "precio_unitario_clp",
+      "dtype": "float64"
+    },
+    {
+      "column": "costo_unitario_clp",
+      "dtype": "float64"
+    },
+    {
+      "column": "hoja_origen",
+      "dtype": "string"
+    },
+    {
+      "column": "quality_score",
+      "dtype": "int64"
+    }
+  ],
+  "fingerprint": "ca745a799d64c47a",
+  "captured_at": "2026-08-08T13:12:06.356515",
+  "run_id": "20260808-131117-964ac589"
+}

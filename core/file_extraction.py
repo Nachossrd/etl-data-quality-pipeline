@@ -1,11 +1,26 @@
 import pandas as pd
 import csv
 import os
-from typing import Iterator
+import re
+import unicodedata
+from typing import Iterator, List, Set
 from core.logging_engine import setup_logger
 from config.settings import PipelineConfig
 
 logger = setup_logger("file_extraction")
+
+# Fracción de columnas de la hoja principal que otra hoja debe compartir para
+# considerarse "la misma tabla partida en varias hojas" (típico: un workbook
+# con "Ventas 2019-2020" y "Ventas 2021-2022").
+SHEET_SCHEMA_OVERLAP = 0.70
+
+
+def _normalize_col(col: object) -> str:
+    """Nombre de columna comparable: sin acentos, sin puntuación, minúsculas."""
+    text = unicodedata.normalize("NFKD", str(col))
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]+", "", text.lower())
+
 
 class FileExtractor:
     @staticmethod
@@ -42,14 +57,37 @@ class FileExtractor:
         return best_row
 
     @staticmethod
+    def _sheet_columns(df: pd.DataFrame) -> Set[str]:
+        return {_normalize_col(c) for c in df.columns}
+
+    @staticmethod
     def extract_excel(file_path: str) -> Iterator[pd.DataFrame]:
-        """Extracts Excel data. Yields a single chunk containing the best sheet."""
+        """Extrae un Excel. Emite la mejor hoja + toda hoja con el mismo esquema.
+
+        Antes esta función elegía "la mejor hoja" y descartaba el resto en
+        silencio. Para un workbook partido por período (`Ventas 2019 - 2020` /
+        `Ventas 2021 - 2022`) eso significaba perder la mitad del dataset sin
+        que ningún log lo dijera: el pipeline reportaba éxito sobre datos
+        incompletos, que es peor que fallar.
+
+        Ahora se puntúa cada hoja igual que antes y, además de la ganadora, se
+        emiten como chunks adicionales las hojas que compartan al menos
+        SHEET_SCHEMA_OVERLAP de sus columnas (comparadas sin acentos ni
+        puntuación, porque los headers cambian de un año a otro). Las hojas con
+        esquema distinto — un "Diccionario" o un "Resumen" — se siguen
+        descartando, pero ahora queda registrado en el log.
+
+        Cuando se une más de una hoja se agrega la columna `_hoja_origen` para
+        que el dato nunca pierda su trazabilidad. Con una sola hoja el
+        comportamiento es idéntico al anterior (sin columnas extra).
+        """
         logger.info(f"Extracting Excel file: {file_path}")
         xl = pd.ExcelFile(file_path)
+
+        parsed: dict[str, pd.DataFrame] = {}
         best_sheet = xl.sheet_names[0]
-        best_score = -1
-        best_df = None
-        
+        best_score = -1.0
+
         for sheet in xl.sheet_names:
             try:
                 raw = xl.parse(sheet, header=None, nrows=50)
@@ -57,14 +95,49 @@ class FileExtractor:
                 df = xl.parse(sheet, header=header_row)
             except Exception:
                 df = xl.parse(sheet)
-                
+
+            parsed[sheet] = df
             score = len(df.columns) + df.notna().sum().sum() / max(len(df), 1)
             if score > best_score:
-                best_sheet, best_score, best_df = sheet, score, df
-                
-        logger.info(f"Selected sheet: {best_sheet} with {len(best_df)} rows")
-        # Yield the entire dataframe as one chunk (since Excel doesn't stream well)
-        yield best_df
+                best_sheet, best_score = sheet, score
+
+        best_cols = FileExtractor._sheet_columns(parsed[best_sheet])
+        compatible: List[str] = []
+        for sheet in xl.sheet_names:
+            if sheet == best_sheet:
+                compatible.append(sheet)
+                continue
+            df = parsed[sheet]
+            if df.empty or not best_cols:
+                continue
+            overlap = len(FileExtractor._sheet_columns(df) & best_cols) / len(best_cols)
+            if overlap >= SHEET_SCHEMA_OVERLAP:
+                compatible.append(sheet)
+            else:
+                logger.warning(
+                    f"Hoja '{sheet}' descartada: sólo comparte "
+                    f"{overlap*100:.0f}% del esquema de '{best_sheet}' "
+                    f"(mínimo {SHEET_SCHEMA_OVERLAP*100:.0f}%)"
+                )
+
+        # Orden original del workbook, con la hoja ganadora primero para que el
+        # header del CSV de salida salga de la hoja de esquema más completo.
+        compatible.sort(key=lambda s: (s != best_sheet, xl.sheet_names.index(s)))
+        total_rows = sum(len(parsed[s]) for s in compatible)
+
+        if len(compatible) == 1:
+            logger.info(f"Selected sheet: {best_sheet} with {total_rows} rows")
+            yield parsed[best_sheet]
+            return
+
+        logger.info(
+            f"Unificando {len(compatible)} hojas con esquema compatible "
+            f"({', '.join(compatible)}) — {total_rows} filas en total"
+        )
+        for sheet in compatible:
+            df = parsed[sheet].copy()
+            df["_hoja_origen"] = sheet
+            yield df
 
     @staticmethod
     def extract_csv_chunked(file_path: str) -> Iterator[pd.DataFrame]:

@@ -1,0 +1,44 @@
+{
+  "dataset": "crm_clientes",
+  "schema": [
+    {
+      "column": "data_quality_flags",
+      "dtype": "object"
+    },
+    {
+      "column": "cliente_id",
+      "dtype": "str"
+    },
+    {
+      "column": "segmento",
+      "dtype": "str"
+    },
+    {
+      "column": "antiguedad_meses",
+      "dtype": "int64"
+    },
+    {
+      "column": "ventas_totales",
+      "dtype": "float64"
+    },
+    {
+      "column": "ventas_totales_original",
+      "dtype": "float64"
+    },
+    {
+      "column": "ventas_totales_currency",
+      "dtype": "str"
+    },
+    {
+      "column": "tipo_movimiento",
+      "dtype": "str"
+    },
+    {
+      "column": "quality_score",
+      "dtype": "int64"
+    }
+  ],
+  "fingerprint": "f2357a714c080a79",
+  "captured_at": "2026-08-08T21:59:39.967251",
+  "run_id": "20260808-215923-5444784b"
+}

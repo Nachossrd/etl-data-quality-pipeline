@@ -39,6 +39,18 @@ class Cleaner(ABC):
 
     name: str = "unnamed"
 
+    # Overrides para el SemanticEnricher (ver semantic/semantic_pipeline.py).
+    # Un cleaner que ya deja sus columnas canonizadas puede apagar las fases
+    # heurísticas — corrección de escala monetaria, clasificación de dominio —
+    # que sólo tienen sentido sobre datos sucios y que sobre datos ya limpios
+    # no corrigen nada, sino que inventan. `{}` = comportamiento por defecto.
+    semantic_options: Dict[str, bool] = {}
+
+    # Nombre del YAML de reglas declarativas (`rules/datasets/<name>.yaml`) que
+    # aplica a la salida de este cleaner. Se usa como fallback cuando el nombre
+    # del archivo/tabla de entrada no coincide con ningún YAML.
+    rules_dataset: Optional[str] = None
+
     @staticmethod
     @abstractmethod
     def matches(df: pd.DataFrame) -> bool:
@@ -117,10 +129,12 @@ def _bootstrap_default_cleaners() -> None:
     from core.cleaners.transactional_es import TransactionalEsCleaner
     from core.cleaners.car_prices import CarPricesPipelineCleaner
     from core.cleaners.imdb_basics import ImdbTitleBasicsCleaner, ImdbTitleRatingsCleaner
+    from core.cleaners.abarrotes_ventas import AbarrotesVentasCleaner
 
     REGISTRY.register(ImdbTitleBasicsCleaner)
     REGISTRY.register(ImdbTitleRatingsCleaner)
     REGISTRY.register(CarPricesPipelineCleaner)
+    REGISTRY.register(AbarrotesVentasCleaner)
     REGISTRY.register(TransactionalEsCleaner, fallback=True)
 
 

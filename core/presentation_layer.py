@@ -72,6 +72,18 @@ class ReportGenerator:
             logger.error(f"Failed to generate Business Report: {e}")
             
         # 3. La Capa Analítica (Exportación a AnalyticsDB para SQL y OLAP)
+        #
+        # Opt-in: sin servidor levantado, cada tabla se quedaba ~16 segundos
+        # esperando el timeout de ODBC para terminar en un ERROR en el log. En
+        # un run de 4 tablas eso era más de un minuto de espera para no
+        # producir nada. Las bases consultables del run las genera ahora
+        # `core/sql_export.py` (DuckDB + SQLite, sin servidor). Para volver a
+        # exportar a SQL Server: PIPELINE_SQL_SERVER_EXPORT=1 en .env
+        if not PipelineConfig.SQL_SERVER_EXPORT:
+            logger.debug("Export a SQL Server deshabilitado "
+                         "(PIPELINE_SQL_SERVER_EXPORT=0)")
+            return audit_filename, excel_filename
+
         try:
             from sqlalchemy import create_engine, text
             from config.settings import get_sql_connection_string

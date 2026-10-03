@@ -49,10 +49,33 @@ def _sha256_file(path: str, chunk_size: int = 1 << 20) -> str:
 
 
 def _file_descriptor(path: str) -> Dict[str, Any]:
-    """Captura metadata + hash de un archivo. Tolerante a archivos faltantes."""
+    """Captura metadata + hash de un archivo o carpeta.
+
+    La entrada del pipeline puede ser un directorio completo (o un ZIP que se
+    expande a uno). Para una carpeta se registra cada archivo con su hash: el
+    manifest tiene que poder responder "exactamente qué entró en este run",
+    y un hash de la ruta no sirve para eso.
+    """
     p = Path(path)
     if not p.exists():
         return {"path": str(path), "exists": False}
+
+    if p.is_dir():
+        files = sorted(f for f in p.rglob("*") if f.is_file())
+        members = [
+            {"path": str(f.relative_to(p)), "size_bytes": f.stat().st_size,
+             "sha256": _sha256_file(str(f))}
+            for f in files
+        ]
+        return {
+            "path": str(p.resolve()),
+            "exists": True,
+            "is_directory": True,
+            "file_count": len(members),
+            "size_bytes": sum(m["size_bytes"] for m in members),
+            "files": members,
+        }
+
     stat = p.stat()
     return {
         "path": str(p.resolve()),

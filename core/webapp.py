@@ -52,14 +52,77 @@ def require_auth(authorization: Optional[str] = Header(default=None)) -> None:
         raise HTTPException(status_code=403, detail="Invalid token")
 
 
-def _run_pipeline_for_upload(file_path: str) -> bool:
+PUBLISH_DIR = os.environ.get(
+    "DATACLEAN_PUBLISH_DIR",
+    r"C:\Users\marku\Downloads\El cubo\data-clean",
+)
+
+
+def _process_upload(file_path: str) -> dict:
+    """Flujo completo de una subida: ETL -> SQL local -> tableros -> portada.
+
+    Antes esto sólo corría el ETL y devolvía una lista de archivos para
+    descargar. Ahora la subida deja además el dataset consultable en SQL y su
+    tablero publicado, que es el punto de todo el flujo: subir un archivo y
+    verlo, sin pasos manuales intermedios.
+    """
     import auto_pipeline
-    try:
-        auto_pipeline.run_pipeline(file_path, PipelineConfig.OUTPUT_DIR)
-        return True
-    except Exception as e:
-        logger.error(f"Pipeline failed on upload: {e}")
-        return False
+
+    result = auto_pipeline.run_pipeline(file_path, PipelineConfig.OUTPUT_DIR)
+    run_dir = result["run_dir"]
+    out: dict = {
+        "run_id": result["run_id"],
+        "run_dir": run_dir,
+        "quarantine_failed": result["quarantine_failed"],
+        "quarantine_ratio": result["q_ratio"],
+        "tables": [],
+        "dashboards": [],
+    }
+
+    from core.sql_export import export_run
+    sql = export_run(run_dir)
+    out["tables"] = sql.get("tables", [])
+    out["sql"] = {k: os.path.basename(v) for k, v in sql.items()
+                  if k in ("duckdb", "sqlite", "query_guide") and v}
+
+    if result["quarantine_failed"]:
+        # Datos declarados dudosos por el propio pipeline: no se publican.
+        logger.warning("Cuarentena sobre el umbral; no se publican tableros")
+        return out
+
+    import json as _json
+
+    import pandas as pd
+
+    from analytics import portal, registry
+
+    quality = {}
+    qpath = os.path.join(run_dir, "quality_report.json")
+    if os.path.exists(qpath):
+        with open(qpath, encoding="utf-8") as f:
+            quality = _json.load(f)
+
+    for table in out["tables"]:
+        parquet = os.path.join(run_dir, f"{table}_clean.parquet")
+        if not os.path.exists(parquet):
+            continue
+        try:
+            df = pd.read_parquet(parquet)
+            if df.empty:
+                continue
+            slug = portal.slugify(table)
+            meta = registry.build(df, table, os.path.join(PUBLISH_DIR, slug),
+                                  run_dir=run_dir, quality=quality,
+                                  origen=os.path.basename(file_path))
+            out["dashboards"].append({"tabla": table, "slug": slug,
+                                       "tipo": meta["tipo"], "filas": meta["filas"]})
+        except Exception as e:
+            logger.error(f"Tablero de '{table}' falló: {e}")
+
+    if out["dashboards"]:
+        portal.build(PUBLISH_DIR)
+        out["portal"] = os.path.join(PUBLISH_DIR, "index.html")
+    return out
 
 
 # ─── App ────────────────────────────────────────────────────────────────────
@@ -108,7 +171,7 @@ async def index():
 # ─── Endpoints autenticados ─────────────────────────────────────────────────
 @app.post("/upload", dependencies=[Depends(require_auth)])
 async def upload(file: UploadFile = File(...)):
-    """Recibe archivo, ejecuta pipeline, lista outputs."""
+    """Recibe archivo, ejecuta el flujo completo y devuelve qué se produjo."""
     os.makedirs("uploads", exist_ok=True)
     file_path = os.path.join("uploads", os.path.basename(file.filename))
     with open(file_path, "wb") as f:
@@ -118,25 +181,41 @@ async def upload(file: UploadFile = File(...)):
                 break
             f.write(chunk)
 
-    success = _run_pipeline_for_upload(file_path)
-    if not success:
-        return JSONResponse(
-            {"success": False, "error": "Pipeline execution failed"},
-            status_code=500,
-        )
+    try:
+        result = _process_upload(file_path)
+    except Exception as e:
+        logger.error(f"Pipeline failed on upload: {e}")
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+    run_dir = result["run_dir"]
     files = []
-    if os.path.exists(PipelineConfig.OUTPUT_DIR):
-        for root, _, names in os.walk(PipelineConfig.OUTPUT_DIR):
+    if os.path.exists(run_dir):
+        for root, _, names in os.walk(run_dir):
             for n in names:
+                # Relativo a OUTPUT_DIR (incluye el run_id) para que las rutas
+                # sirvan tal cual en /download.
                 files.append(os.path.relpath(os.path.join(root, n),
-                                             PipelineConfig.OUTPUT_DIR))
-    return {"success": True, "files": files}
+                                             PipelineConfig.OUTPUT_DIR)
+                             .replace("\\", "/"))
+    return {"success": True, "files": sorted(files), **result}
+
+
+@app.get("/formats", response_class=JSONResponse)
+async def formats():
+    """Formatos que el pipeline sabe leer. Alimenta la UI."""
+    from core.ingest import describe_support
+    return describe_support()
 
 
 @app.get("/download/{filename:path}", dependencies=[Depends(require_auth)])
 async def download(filename: str):
-    file_path = os.path.join(PipelineConfig.OUTPUT_DIR, filename)
-    if not os.path.exists(file_path) or not os.path.isfile(file_path):
+    # El path viene del cliente: hay que confinarlo a OUTPUT_DIR. Sin esta
+    # comprobación, `../../.env` serviría cualquier archivo del disco.
+    root = os.path.realpath(PipelineConfig.OUTPUT_DIR)
+    file_path = os.path.realpath(os.path.join(root, filename))
+    if not file_path.startswith(root + os.sep):
+        raise HTTPException(status_code=403, detail="Path outside output dir")
+    if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path, filename=os.path.basename(filename))
 
@@ -200,8 +279,12 @@ pre{background:#0f172a;padding:8px;border-radius:4px;white-space:pre-wrap;word-b
   <p>ETL chunked semántico con auditoría completa.</p>
 
   <label class="upload-area" for="fileInput">
-    <div id="fileInfo">Click o arrastra .csv/.xlsx/.bak</div>
-    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.bak">
+    <div id="fileInfo">Click o arrastra un archivo</div>
+    <div style="color:#64748b;font-size:11px;margin-top:8px;">
+      csv · tsv · txt · xlsx · xls · json · jsonl · parquet · sqlite · db · sql · bak · zip
+    </div>
+    <input type="file" id="fileInput"
+           accept=".csv,.tsv,.txt,.dat,.xlsx,.xls,.xlsm,.json,.jsonl,.ndjson,.parquet,.pq,.db,.sqlite,.sqlite3,.sql,.bak,.zip">
   </label>
   <button class="btn" id="btnUpload" disabled>Procesar Archivo</button>
   <div id="status"></div>
@@ -248,11 +331,46 @@ btnUpload.addEventListener('click', async () => {
   const r = await fetch('/upload', {method:'POST', body: fd, headers: authHeaders()});
   const data = await r.json();
   if (data.success) {
-    const links = data.files.map(f =>
+    let h = '<div style="color:#10b981;">OK — run ' + esc(data.run_id) + '</div>';
+
+    if (data.quarantine_failed) {
+      h += '<div style="color:#f59e0b;margin-top:8px;">Cuarentena ' +
+           (data.quarantine_ratio*100).toFixed(2) + '% sobre el umbral: ' +
+           'no se publicaron tableros. Revisa la carpeta quarantine del run.</div>';
+    }
+
+    if (data.tables && data.tables.length) {
+      h += '<h3 style="color:#fbbf24;font-size:13px;">Tablas detectadas</h3>';
+      h += '<table><tr><th>Tabla</th><th>Tablero</th><th>Filas</th></tr>';
+      const byTable = {};
+      (data.dashboards || []).forEach(d => byTable[d.tabla] = d);
+      data.tables.forEach(t => {
+        const d = byTable[t];
+        h += '<tr><td>' + esc(t) + '</td><td>' +
+             (d ? esc(d.tipo) : '—') + '</td><td>' +
+             (d ? d.filas.toLocaleString('es-CL') : '—') + '</td></tr>';
+      });
+      h += '</table>';
+    }
+
+    if (data.sql) {
+      h += '<h3 style="color:#fbbf24;font-size:13px;">Consultar en SQL</h3>';
+      h += '<pre>duckdb  ' + esc(data.run_dir) + '\\' + esc(data.sql.duckdb || '') +
+           '\nsqlite3 ' + esc(data.run_dir) + '\\' + esc(data.sql.sqlite || '') + '</pre>';
+    }
+
+    if (data.portal) {
+      h += '<h3 style="color:#fbbf24;font-size:13px;">Tableros publicados</h3>';
+      h += '<pre>' + esc(data.portal) + '</pre>';
+    }
+
+    h += '<h3 style="color:#fbbf24;font-size:13px;">Descargas</h3>';
+    h += data.files.map(f =>
       '<a class="btn" style="margin-top:6px;text-decoration:none;display:block;text-align:center;" href="/download/' +
-      encodeURIComponent(f) + '">Descargar ' + esc(f) + '</a>'
+      f.split('/').map(encodeURIComponent).join('/') + '">' + esc(f) + '</a>'
     ).join('');
-    status.innerHTML = '<div style="color:#10b981;">OK</div>' + links;
+    status.innerHTML = h;
+    btnUpload.disabled = false;
   } else {
     status.innerHTML = '<div style="color:#ef4444;">' + esc(data.error || 'Error') + '</div>';
     btnUpload.disabled = false;

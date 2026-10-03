@@ -1,0 +1,60 @@
+{
+  "dataset": "pedidos",
+  "schema": [
+    {
+      "column": "data_quality_flags",
+      "dtype": "object"
+    },
+    {
+      "column": "orden_id",
+      "dtype": "str"
+    },
+    {
+      "column": "fecha",
+      "dtype": "datetime64[us]"
+    },
+    {
+      "column": "canal",
+      "dtype": "str"
+    },
+    {
+      "column": "ciudad",
+      "dtype": "str"
+    },
+    {
+      "column": "categoria",
+      "dtype": "str"
+    },
+    {
+      "column": "unidades",
+      "dtype": "int64"
+    },
+    {
+      "column": "monto",
+      "dtype": "float64"
+    },
+    {
+      "column": "descuento",
+      "dtype": "float64"
+    },
+    {
+      "column": "monto_original",
+      "dtype": "float64"
+    },
+    {
+      "column": "monto_currency",
+      "dtype": "str"
+    },
+    {
+      "column": "tipo_movimiento",
+      "dtype": "str"
+    },
+    {
+      "column": "quality_score",
+      "dtype": "int64"
+    }
+  ],
+  "fingerprint": "4a4011314d71d64d",
+  "captured_at": "2026-08-08T22:00:16.484487",
+  "run_id": "20260808-215923-5444784b"
+}

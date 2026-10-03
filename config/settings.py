@@ -56,6 +56,13 @@ class PipelineConfig:
     EXCEL_ROWS_PER_SHEET: int = int(
         os.environ.get("PIPELINE_EXCEL_ROWS_PER_SHEET", "1000000"))
 
+    # ─── Destinos SQL ─────────────────────────────────────────────────────
+    # Las bases consultables del run (DuckDB + SQLite) se generan siempre y no
+    # necesitan servidor. El export a SQL Server es opt-in: sin instancia
+    # levantada sólo produce timeouts de ODBC y ruido en el log.
+    SQL_SERVER_EXPORT: bool = os.environ.get(
+        "PIPELINE_SQL_SERVER_EXPORT", "0").strip().lower() in ("1", "true", "yes")
+
 
 def get_sql_connection_string(database: str = None) -> str:
     """Construye la URL ODBC para SQLAlchemy. Centraliza el patrón."""

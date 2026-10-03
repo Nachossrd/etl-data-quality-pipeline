@@ -1,0 +1,40 @@
+{
+  "dataset": "crm_tickets",
+  "schema": [
+    {
+      "column": "data_quality_flags",
+      "dtype": "object"
+    },
+    {
+      "column": "ticket_id",
+      "dtype": "str"
+    },
+    {
+      "column": "cliente_id",
+      "dtype": "str"
+    },
+    {
+      "column": "estado",
+      "dtype": "str"
+    },
+    {
+      "column": "horas",
+      "dtype": "float64"
+    },
+    {
+      "column": "estado_normalizado",
+      "dtype": "str"
+    },
+    {
+      "column": "tipo_movimiento",
+      "dtype": "str"
+    },
+    {
+      "column": "quality_score",
+      "dtype": "int64"
+    }
+  ],
+  "fingerprint": "54ef6a2d53fb551e",
+  "captured_at": "2026-08-08T21:59:56.577347",
+  "run_id": "20260808-215923-5444784b"
+}

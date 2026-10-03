@@ -1,0 +1,52 @@
+{
+  "dataset": "catalogo",
+  "schema": [
+    {
+      "column": "data_quality_flags",
+      "dtype": "object"
+    },
+    {
+      "column": "sku",
+      "dtype": "str"
+    },
+    {
+      "column": "nombre",
+      "dtype": "str"
+    },
+    {
+      "column": "precio",
+      "dtype": "float64"
+    },
+    {
+      "column": "proveedor_nombre",
+      "dtype": "str"
+    },
+    {
+      "column": "proveedor_pais",
+      "dtype": "str"
+    },
+    {
+      "column": "sku_normalized",
+      "dtype": "str"
+    },
+    {
+      "column": "precio_original",
+      "dtype": "int64"
+    },
+    {
+      "column": "precio_currency",
+      "dtype": "str"
+    },
+    {
+      "column": "tipo_movimiento",
+      "dtype": "str"
+    },
+    {
+      "column": "quality_score",
+      "dtype": "int64"
+    }
+  ],
+  "fingerprint": "9692f0f2c124d851",
+  "captured_at": "2026-08-08T21:59:23.342863",
+  "run_id": "20260808-215923-5444784b"
+}
